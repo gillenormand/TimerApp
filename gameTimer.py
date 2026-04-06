@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#version 0.8
+#version 0.8.5a
 import sys
 import os
 import json
@@ -10,69 +10,75 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QFont, QIcon
 
-class GameTimerApp(QDialog):
+class TimerApp(QDialog):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Game Timer")
+        self.appName = "appTimer"
+        self.version = "0.8.5a"
+        self.setWindowTitle(self.appName + " " + self.version)
         self.resize(500, 500)  # screen size
         self.center_window()   # window centring
         self.setWindowIcon(QIcon('img.ico'))
         
         # --- Attributes ---
-        self.games = {}
-        self.current_game = None
-        self.current_time = 0
-        self.session_times = {}  # current session timer array
-        self.timer_running = False
-        self.last_game = None
+        self.entries = {}
+        self.currentEntry = None
+        self.currentTime = 0
+        self.sessionTimes = {}  # current session timer array
+        self.timerRunning = False
+        self.lastEntry = None
         
         # --- Layouts ---
-        main_layout = QVBoxLayout()
-        button_layout = QHBoxLayout()
-        game_control_layout = QHBoxLayout()
+        mainLayout = QVBoxLayout()
+        buttonLayout = QHBoxLayout()
+        appControlLayout = QHBoxLayout()
         
         # --- Widgets ---
-        self.label_name = QLabel("!!!pick a game!!!")
+        self.labelName = QLabel("!!!pick an entry!!!")
         self.font = QFont("Arial", 18)
         self.font.setBold(True)
-        self.label_name.setAlignment(Qt.AlignCenter)
-        self.label_name.setFont(self.font)
+        self.labelName.setAlignment(Qt.AlignCenter)
+        self.labelName.setFont(self.font)
         
-        self.timer_display = QLabel("0:00:00")
-        self.timer_display.setAlignment(Qt.AlignCenter)
-        self.timer_display.setStyleSheet("""
+        self.timerDisplay = QLabel("0:00:00")
+        self.timerDisplay.setAlignment(Qt.AlignCenter)
+        self.timerDisplay.setStyleSheet("""
             font-size: 96px;  /* Размер шрифта для основного таймера */
             border: 5px solid #00000000;  /* Бордер вокруг таймера */
             padding: 10px;  /* Внутренний отступ для таймера */
             color: #ffffff;  /* Цвет текста таймера */
         """)
         
-        self.session_timer_display = QLabel("Current Session: 0:00:00")
-        self.session_timer_display.setAlignment(Qt.AlignCenter)
-        self.session_timer_display.setStyleSheet("font-size: 24px;")  #font size
+        self.sessionTimerDisplay = QLabel("Current Session: 0:00:00")
+        self.sessionTimerDisplay.setAlignment(Qt.AlignCenter)
+        self.sessionTimerDisplay.setStyleSheet("font-size: 24px;")  #font size
         
-        self.list_widget = QListWidget()
-        self.list_widget.itemClicked.connect(self.select_game)
-        self.time_labels = {}
+        self.listWidget = QListWidget()
+        self.listWidget.itemClicked.connect(self.selectEntry)
+        self.timeLabels = {}
         
-        self.start_button = QPushButton("Start")
-        self.start_button.setEnabled(False)
-        self.start_button.clicked.connect(self.start_timer)
+        self.startButton = QPushButton("Start")
+        self.startButton.setEnabled(False)
+        self.startButton.clicked.connect(self.startTimer)
         
-        self.pause_button = QPushButton("Pause")
-        self.pause_button.setEnabled(False)
-        self.pause_button.clicked.connect(self.pause_timer)
+        self.pauseButton = QPushButton("Pause")
+        self.pauseButton.setEnabled(False)
+        self.pauseButton.clicked.connect(self.pauseTimer)
         
-        self.add_button = QPushButton("Add New Game")
-        self.add_button.clicked.connect(self.add_game)
+        self.addButton = QPushButton("Add New Entry")
+        self.addButton.clicked.connect(self.addEntry)
         
-        self.remove_button = QPushButton("Remove Game")
-        self.remove_button.setEnabled(False)
-        self.remove_button.clicked.connect(self.remove_game)
-        
-        self.edit_button = QPushButton("Edit Time")
-        self.edit_button.setEnabled(False)
-        self.edit_button.clicked.connect(self.edit_time)
+        self.removeButton = QPushButton("Remove Entry")
+        self.removeButton.setEnabled(False)
+        self.removeButton.clicked.connect(self.removeEntry)
+
+        self.addMinutesButton = QPushButton("+/- minutes")
+        self.addMinutesButton.setEnabled(False)
+        self.addMinutesButton.clicked.connect(self.addMinutes)        
+
+        self.editButton = QPushButton("Edit Time")
+        self.editButton.setEnabled(False)
+        self.editButton.clicked.connect(self.editTime)
         
         # --- Set Styles ---
         self.setStyleSheet("""
@@ -106,33 +112,34 @@ class GameTimerApp(QDialog):
             QPushButton:hover {
                 border: 1px solid #ff8728;
             }
-            QLabel#timer_display {
+            QLabel#timerDisplay {
                 border: 5px solid #ff8728;
                 padding: 10px;
             }
         """)
         
         # --- Add Widgets to Layout ---
-        main_layout.addWidget(self.label_name)
-        main_layout.addWidget(self.timer_display)
-        main_layout.addWidget(self.session_timer_display)  # add timer of curr. sess.
-        button_layout.addWidget(self.start_button)
-        button_layout.addWidget(self.pause_button)
-        main_layout.addLayout(button_layout)
-        game_control_layout.addWidget(self.add_button)
-        game_control_layout.addWidget(self.remove_button)
-        game_control_layout.addWidget(self.edit_button)
-        main_layout.addLayout(game_control_layout)
-        main_layout.addWidget(self.list_widget)
-        self.setLayout(main_layout)
+        mainLayout.addWidget(self.labelName)
+        mainLayout.addWidget(self.timerDisplay)
+        mainLayout.addWidget(self.sessionTimerDisplay)  # add timer of curr. sess.
+        buttonLayout.addWidget(self.startButton)
+        buttonLayout.addWidget(self.pauseButton)
+        mainLayout.addLayout(buttonLayout)
+        appControlLayout.addWidget(self.addButton)
+        appControlLayout.addWidget(self.removeButton)
+        appControlLayout.addWidget(self.addMinutesButton)
+        appControlLayout.addWidget(self.editButton)
+        mainLayout.addLayout(appControlLayout)
+        mainLayout.addWidget(self.listWidget)
+        self.setLayout(mainLayout)
         
         # --- Timer ---
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_time)
+        self.timer.timeout.connect(self.updateTime)
         
         # load settings
-        self.load_settings()
-        self.load_games_from_json()
+        self.loadSettings()
+        self.loadEntriesFromJson()
 
     def center_window(self):
         qr = self.frameGeometry()
@@ -140,72 +147,92 @@ class GameTimerApp(QDialog):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def saveLastGame(self):
+    def saveLastEntry(self):
         """Save window settings to JSON file."""
         settings = {
-            'last_game': self.last_game  # save last game
+            'lastEntry': self.lastEntry  # save last entry
         }
         with open("settings.json", "w") as file:
             json.dump(settings, file)
 
-    def load_games_from_json(self):
-        """Load games from JSON file."""
-        if os.path.exists("games.json"):
+    def loadEntriesFromJson(self):
+        """Load entries from JSON file"""
+        if os.path.exists("apps.json"):
             try:
-                with open("games.json", "r") as file:
-                    self.games = json.load(file)
-                    if not isinstance(self.games, dict) or not all(isinstance(v, int) for v in self.games.values()):
-                        raise ValueError("Invalid games.json format")
+                with open("apps.json", "r") as file:
+                    self.entries = json.load(file)
+                    if not isinstance(self.entries, dict) or not all(isinstance(v, int) for v in self.entries.values()):
+                        raise ValueError("Invalid entries.json format")
             except (json.JSONDecodeError, ValueError) as e:
-                QMessageBox.warning(self, "Error", f"Failed to load games: {str(e)}")
-                self.games = {}
+                QMessageBox.warning(self, "Error", f"Failed to load entries: {str(e)}")
+                self.entries = {}
         else:
-            self.games = {}
-        self.populate_list_widget()
+            self.entries = {}
+        self.populateListWidget()
         
-        # Try to select the last game
-        if self.last_game in self.games:
-            item = self.list_widget.findItems(self.last_game, Qt.MatchExactly)
-            if item:
-                self.select_game(item[0])  # Select the last game if it exists
+        # Try to select the last entry
+#        if self.lastEntry in self.entries:
+#            item = self.listWidget.findItems(self.lastEntry, Qt.MatchExactly)
+#            if item:
+#                self.selectEntry(item[0])  # Select the last entry if it exists
 
-    def load_settings(self):
+        if self.lastEntry and self.lastEntry in self.entries:
+             found_item = None
+             for i in range(self.listWidget.count()):
+                 item = self.listWidget.item(i)
+                 widget = self.listWidget.itemWidget(item)
+                 if widget:
+                    # Получаем текст из первого элемента layout (название приложения)
+                     label = widget.layout().itemAt(0).widget()
+                     if isinstance(label, QLabel) and label.text() == self.lastEntry:
+                         found_item = item
+                         break
+            
+             if found_item:
+                 self.selectEntry(found_item)
+                 # Force visual selection highlight
+                 self.listWidget.setCurrentItem(found_item)
+                 self.listWidget.setFocus()
+
+
+    def loadSettings(self):
         if os.path.exists("settings.json"):
             try:
                 with open("settings.json", "r") as file:
                     settings = json.load(file)
-                    self.last_game = settings.get('last_game')
+                    self.lastEntry = settings.get('lastEntry')
             except (json.JSONDecodeError, IOError):
-                self.last_game = None
+                self.lastEntry = None
 
-    def save_games_to_json(self):
+    def saveEntriesToJson(self):
         try:
-            with open("games.json", "w") as file:
-                json.dump(self.games, file, indent=4)
+            with open("apps.json", "w") as file:
+                json.dump(self.entries, file, indent=4)
         except IOError as e:
-            QMessageBox.warning(self, "Error", f"Failed to save games: {str(e)}")
+            QMessageBox.warning(self, "Error", f"Failed to save apps: {str(e)}")
 
-    def populate_list_widget(self):
-        self.list_widget.clear()
-        self.time_labels.clear()
-        items = [game for game in sorted(self.games, key=lambda k: self.games[k], reverse=True)]
-        for game in items:
+    def populateListWidget(self):
+        self.listWidget.clear()
+        self.timeLabels.clear()
+        items = [app for app in sorted(self.entries, key=lambda k: self.entries[k], reverse=True)]
+        for app in items:
             item = QListWidgetItem()  # Создаем пустой элемент списка
+
             widget = QWidget()  # Создаем контейнер для строки
             layout = QHBoxLayout()  # Создаем горизонтальный layout
             
             # Создаем QLabel для названия игры
-            game_label = QLabel(game)
-            game_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+            entryLabel = QLabel(app)
+            entryLabel.setStyleSheet("font-size: 14px; font-weight: bold;")
             
             # Создаем QLabel для времени
-            time_label = QLabel(self.format_time(self.games[game]))
-            time_label.setStyleSheet("min-width: 100px; text-align: right;")
-            time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            timeLabel = QLabel(self.format_time(self.entries[app]))
+            timeLabel.setStyleSheet("min-width: 100px; text-align: right;")
+            timeLabel.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             
             # Добавляем виджеты в layout
-            layout.addWidget(game_label)
-            layout.addWidget(time_label)
+            layout.addWidget(entryLabel)
+            layout.addWidget(timeLabel)
             layout.setContentsMargins(5, 0, 5, 0)  # Устанавливаем отступы
             
             # Устанавливаем layout в контейнер
@@ -215,38 +242,39 @@ class GameTimerApp(QDialog):
             item.setSizeHint(widget.sizeHint())
             
             # Добавляем элементы в список и словарь
-            self.list_widget.addItem(item)
-            self.list_widget.setItemWidget(item, widget)
-            self.time_labels[game] = time_label
+            self.listWidget.addItem(item)
+            self.listWidget.setItemWidget(item, widget)
+            self.timeLabels[app] = timeLabel
 
-    def select_game(self, item):
-        """Handle game selection."""
-        widget = self.list_widget.itemWidget(item)
+    def selectEntry(self, item):
+        """Handle entry selection."""
+        widget = self.listWidget.itemWidget(item)
         if widget:
-            game_label = widget.layout().itemAt(0).widget()
-            self.current_game = game_label.text()
-            self.current_time = self.games.get(self.current_game, 0)
+            app_label = widget.layout().itemAt(0).widget()
+            self.currentEntry = app_label.text()
+            self.currentTime = self.entries.get(self.currentEntry, 0)
             
             # inicialization of time seesion if not inicialisiated
-            if self.current_game not in self.session_times:
-                self.session_times[self.current_game] = 0
+            if self.currentEntry not in self.sessionTimes:
+                self.sessionTimes[self.currentEntry] = 0
                 
-            self.label_name.setText(f"{self.current_game}")
-            self.update_timer_display()
-            self.update_session_timer_display()  # update timer session
-            self.start_button.setEnabled(True)
-            self.remove_button.setEnabled(True)
-            self.edit_button.setEnabled(True)
+            self.labelName.setText(f"{self.currentEntry}")
+            self.updateTimerDisplay()
+            self.update_sessionTimerDisplay()  # update timer session
+            self.startButton.setEnabled(True)
+            self.removeButton.setEnabled(True)
+            self.editButton.setEnabled(True)
+            self.addMinutesButton.setEnabled(True)
 
-    def add_game(self):
-        """Add a new game."""
-        game_name, ok = QInputDialog.getText(self, "Add Game", "Enter game name:")
-        if ok and game_name.strip():
-            game_name = game_name.strip()
-            if game_name in self.games:
-                QMessageBox.warning(self, "Warning", "Game already exists.")
+    def addEntry(self):
+        """Add a new entry."""
+        app_name, ok = QInputDialog.getText(self, "Add Entry", "Enter entry name:")
+        if ok and app_name.strip():
+            app_name = app_name.strip()
+            if app_name in self.entries:
+                QMessageBox.warning(self, "Warning", "Entry already exists.")
             else:
-                self.games[game_name] = 0
+                self.entries[app_name] = 0
                 
                 # Создаем новый элемент списка
                 item = QListWidgetItem()
@@ -254,8 +282,8 @@ class GameTimerApp(QDialog):
                 layout = QHBoxLayout()
                 
                 # Создаем QLabel для названия игры
-                game_label = QLabel(game_name)
-                game_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+                app_label = QLabel(app_name)
+                app_label.setStyleSheet("font-size: 14px; font-weight: bold;")
                 
                 # Создаем QLabel для времени
                 time_label = QLabel("0:00:00")
@@ -263,7 +291,7 @@ class GameTimerApp(QDialog):
                 time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 
                 # Собираем layout
-                layout.addWidget(game_label)
+                layout.addWidget(app_label)
                 layout.addWidget(time_label)
                 layout.setContentsMargins(5, 0, 5, 0)
                 widget.setLayout(layout)
@@ -271,89 +299,174 @@ class GameTimerApp(QDialog):
                 item.setSizeHint(widget.sizeHint())
                 
                 # Добавляем элементы
-                self.list_widget.addItem(item)
-                self.list_widget.setItemWidget(item, widget)
-                self.time_labels[game_name] = time_label
+                self.listWidget.addItem(item)
+                self.listWidget.setItemWidget(item, widget)
+                self.timeLabels[app_name] = time_label
                 
-                self.save_games_to_json()
-                self.select_game(item)
+                self.saveEntriesToJson()
+                self.selectEntry(item)
         else:
-            QMessageBox.warning(self, "Warning", "Game name cannot be empty.")
+            QMessageBox.warning(self, "Warning", "Entry name cannot be empty.")
 
-    def remove_game(self):
-        """Remove the selected game."""
-        if self.current_game:
+    def removeEntry(self):
+        """Remove the selected entry."""
+        if self.currentEntry:
             confirm = QMessageBox.question(
                 self, "Confirm Remove",
-                f"Are you sure you want to remove {self.current_game}?",
+                f"Are you sure you want to remove {self.currentEntry}?",
                 QMessageBox.Yes | QMessageBox.No
             )
             if confirm == QMessageBox.Yes:
-                if self.current_game == self.last_game:
-                    self.last_game = None  # Установить в None, если удаляемая игра была последней
-                self.games.pop(self.current_game, None)  # remove game from list
-                self.session_times.pop(self.current_game, None)  # remove time of this game
-                self.populate_list_widget()
-                self.save_games_to_json()
+                if self.currentEntry == self.lastEntry:
+                    self.lastEntry = None  # Установить в None, если удаляемая игра была последней
+                self.entries.pop(self.currentEntry, None)  # remove entry from list
+                self.sessionTimes.pop(self.currentEntry, None)  # remove time of this entry
+                self.populateListWidget()
+                self.saveEntriesToJson()
                 self.reset_ui()  # reset ui
-            if self.current_game in self.time_labels:
-                del self.time_labels[self.current_game]
+            if self.currentEntry in self.timeLabels:
+                del self.timeLabels[self.currentEntry]
 
-    def edit_time(self):
-        """Edit the time for the selected game."""
-        if self.current_game:
-            new_time, ok = QInputDialog.getInt(self, "Edit Time", "Enter new time (seconds):", self.current_time, 0)
+    def editTime(self):
+        """Edit the time for the selected entry."""
+        if self.currentEntry:
+            new_time, ok = QInputDialog.getInt(self, "Edit Time", "Enter new time (seconds):", self.currentTime, 0)
             if ok:
-                self.games[self.current_game] = new_time
-                self.current_time = new_time
-                self.update_timer_display()
-                self.save_games_to_json()
-                if self.current_game in self.time_labels:
-                    self.time_labels[self.current_game].setText(self.format_time(new_time))
+                self.entries[self.currentEntry] = new_time
+                self.currentTime = new_time
+                self.updateTimerDisplay()
+                self.saveEntriesToJson()
+                if self.currentEntry in self.timeLabels:
+                    self.timeLabels[self.currentEntry].setText(self.format_time(new_time))
 
-    def start_timer(self):
+    def addMinutes(self):
+        """Add minutes accepting both dot and comma, starting with empty field."""
+        if self.currentEntry:
+            from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QDoubleSpinBox
+            from PyQt5.QtCore import Qt, QTimer
+            from PyQt5.QtGui import QKeyEvent
+
+            class FlexibleDoubleSpinBox(QDoubleSpinBox):
+                def __init__(self):
+                    super().__init__()
+                    self.setRange(-9999.0, 9999.0)
+                    self.setDecimals(2)
+                    self.setSingleStep(0.1)
+                    # Убираем стрелочки вверх/вниз, если хотите только ввод с клавиатуры (опционально)
+                    # self.setButtonSymbols(QDoubleSpinBox.NoButtons) 
+
+                def keyPressEvent(self, event):
+                    # Заменяем точку на запятую для совместимости с русской локалью
+                    if event.key() == Qt.Key_Period:
+                        event = QKeyEvent(event.type(), Qt.Key_Comma, event.modifiers(), ",")
+                    super().keyPressEvent(event)
+
+                def textFromValue(self, value):
+                    # Если значение 0 и мы еще не вводили данные, возвращаем пустую строку
+                    # Но это сложно отследить без флага. Проще очистить текст через QTimer после show.
+                    return super().textFromValue(value)
+
+            dialog = QDialog(self)
+            dialog.setWindowTitle("+/- minutes")
+            dialog.setModal(True)
+            
+            layout = QVBoxLayout()
+            label = QLabel("Enter minutes (e.g. -5.5 or -5,5):")
+            layout.addWidget(label)
+            
+            spin_box = FlexibleDoubleSpinBox()
+            spin_box.setValue(0.0)
+            spin_box.setStyleSheet("font-size: 14px; padding: 5px;")
+            layout.addWidget(spin_box)
+            
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(buttons)
+            
+            dialog.setLayout(layout)
+            
+            # Хак: Делаем поле визуально пустым сразу после показа окна
+            # Используем singleShot(0), чтобы код выполнился после того, как виджет отрисует начальное значение
+            QTimer.singleShot(0, lambda: spin_box.lineEdit().setText(""))
+            
+            # Также очищаем выделение, чтобы курсор стоял в начале
+            QTimer.singleShot(0, lambda: spin_box.lineEdit().deselect())
+
+            if dialog.exec_() == QDialog.Accepted:
+                text = spin_box.lineEdit().text()
+                
+                # Если пользователь ничего не ввел, считаем как 0
+                if not text.strip():
+                    val = 0.0
+                else:
+                    # Преобразуем вручную, чтобы быть уверенными в формате (запятая/точка)
+                    clean_text = text.replace(',', '.')
+                    try:
+                        val = float(clean_text)
+                    except ValueError:
+                        val = 0.0
+                
+                seconds_to_add = int(val * 60)
+                
+                self.currentTime += seconds_to_add
+                
+                if self.currentTime < 0:
+                    self.currentTime = 0
+                    
+                self.entries[self.currentEntry] = self.currentTime
+                self.updateTimerDisplay()
+                self.saveEntriesToJson()
+                
+                if self.currentEntry in self.timeLabels:
+                    self.timeLabels[self.currentEntry].setText(self.format_time(self.currentTime))
+
+
+    def startTimer(self):
         """Start the timer."""
-        if self.current_game:
-            self.last_game = self.current_game  # save curr game like a last
-            self.saveLastGame()  # save last game to a file
+        if self.currentEntry:
+            self.lastEntry = self.currentEntry  # save curr entry like a last
+            self.saveLastEntry()  # save last entry to a file
             self.timer.start(1000)
-            self.timer_running = True
-            self.start_button.setEnabled(False)
-            self.pause_button.setEnabled(True)
-            self.add_button.setEnabled(False)
-            self.remove_button.setEnabled(False)
-            self.edit_button.setEnabled(False)
-            self.list_widget.setEnabled(False)
-            self.timer_display.setStyleSheet("font-size: 96px; border: 5px solid #ff8728; padding: 10px;")
+            self.timerRunning = True
+            self.startButton.setEnabled(False)
+            self.pauseButton.setEnabled(True)
+            self.addButton.setEnabled(False)
+            self.removeButton.setEnabled(False)
+            self.editButton.setEnabled(False)
+            self.addMinutesButton.setEnabled(False)
+            self.listWidget.setEnabled(False)
+            self.timerDisplay.setStyleSheet("font-size: 96px; border: 5px solid #ff8728; padding: 10px;")
 
-    def pause_timer(self):
+    def pauseTimer(self):
         """Pause the timer."""
         self.timer.stop()
-        self.timer_running = False
-        self.games[self.current_game] = self.current_time
-        self.save_games_to_json()
-        self.start_button.setEnabled(True)
-        self.pause_button.setEnabled(False)
-        self.add_button.setEnabled(True)
-        self.remove_button.setEnabled(True)
-        self.edit_button.setEnabled(True)
-        self.list_widget.setEnabled(True)
-        self.timer_display.setStyleSheet("font-size: 96px; border: 5px solid #00000000; padding: 10px;")
+        self.timerRunning = False
+        self.entries[self.currentEntry] = self.currentTime
+        self.saveEntriesToJson()
+        self.startButton.setEnabled(True)
+        self.pauseButton.setEnabled(False)
+        self.addButton.setEnabled(True)
+        self.removeButton.setEnabled(True)
+        self.editButton.setEnabled(True)
+        self.addMinutesButton.setEnabled(True)
+        self.listWidget.setEnabled(True)
+        self.timerDisplay.setStyleSheet("font-size: 96px; border: 5px solid #00000000; padding: 10px;")
 
-    def update_time(self):
-        self.current_time += 1
-        self.session_times[self.current_game] += 1
+    def updateTime(self):
+        self.currentTime += 1
+        self.sessionTimes[self.currentEntry] += 1
         if not hasattr(self, 'save_counter'):
             self.save_counter = 0
         self.save_counter += 1
         if self.save_counter >= 10:
             self.save_counter = 0
-            self.games[self.current_game] = self.current_time
-            self.save_games_to_json()
-        self.update_timer_display()
-        self.update_session_timer_display()
-        if self.current_game in self.time_labels:
-            self.time_labels[self.current_game].setText(self.format_time(self.current_time))
+            self.entries[self.currentEntry] = self.currentTime
+            self.saveEntriesToJson()
+        self.updateTimerDisplay()
+        self.update_sessionTimerDisplay()
+        if self.currentEntry in self.timeLabels:
+            self.timeLabels[self.currentEntry].setText(self.format_time(self.currentTime))
 
     def format_time(self, seconds):
         hours = seconds // 3600
@@ -361,30 +474,31 @@ class GameTimerApp(QDialog):
         secs = seconds % 60
         return f"{hours}:{minutes:02}:{secs:02}"
 
-    def update_timer_display(self):
-        self.timer_display.setText(self.format_time(self.current_time))
+    def updateTimerDisplay(self):
+        self.timerDisplay.setText(self.format_time(self.currentTime))
 
-    def update_session_timer_display(self):
-        session_time = self.session_times.get(self.current_game, 0)
-        self.session_timer_display.setText(f"Session: {self.format_time(session_time)}")
+    def update_sessionTimerDisplay(self):
+        session_time = self.sessionTimes.get(self.currentEntry, 0)
+        self.sessionTimerDisplay.setText(f"Session: {self.format_time(session_time)}")
 
     def reset_ui(self):
         """Reset UI to the default state."""
-        self.current_game = None
-        self.current_time = 0
+        self.currentEntry = None
+        self.currentTime = 0
         self.timer.stop()
-        self.timer_running = False
-        self.label_name.setText("!!!pick a game!!!")
-        self.timer_display.setText("0:00:00")
-        self.session_timer_display.setText("Session: 0:00:00")  # reset timer session
-        self.start_button.setEnabled(False)
-        self.pause_button.setEnabled(False)
-        self.remove_button.setEnabled(False)
-        self.edit_button.setEnabled(False)
-        self.list_widget.setEnabled(True)
+        self.timerRunning = False
+        self.labelName.setText("!!!pick an entry!!!")
+        self.timerDisplay.setText("0:00:00")
+        self.sessionTimerDisplay.setText("Session: 0:00:00")  # reset timer session
+        self.startButton.setEnabled(False)
+        self.pauseButton.setEnabled(False)
+        self.removeButton.setEnabled(False)
+        self.editButton.setEnabled(False)
+        self.addMinutesButton.setEnabled(False)
+        self.listWidget.setEnabled(True)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = GameTimerApp()
+    window = TimerApp()
     window.show()
     sys.exit(app.exec_())
