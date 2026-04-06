@@ -43,10 +43,10 @@ class TimerApp(QDialog):
         self.timerDisplay = QLabel("0:00:00")
         self.timerDisplay.setAlignment(Qt.AlignCenter)
         self.timerDisplay.setStyleSheet("""
-            font-size: 96px;  /* Размер шрифта для основного таймера */
-            border: 5px solid #00000000;  /* Бордер вокруг таймера */
-            padding: 10px;  /* Внутренний отступ для таймера */
-            color: #ffffff;  /* Цвет текста таймера */
+            font-size: 96px;  /* font size main timer */
+            border: 5px solid #00000000;  /* timer border */
+            padding: 10px;  /* timer padding */
+            color: #ffffff;  /* timer color */
         """)
         
         self.sessionTimerDisplay = QLabel("Current Session: 0:00:00")
@@ -171,18 +171,13 @@ class TimerApp(QDialog):
         self.populateListWidget()
         
         # Try to select the last entry
-#        if self.lastEntry in self.entries:
-#            item = self.listWidget.findItems(self.lastEntry, Qt.MatchExactly)
-#            if item:
-#                self.selectEntry(item[0])  # Select the last entry if it exists
-
         if self.lastEntry and self.lastEntry in self.entries:
              found_item = None
              for i in range(self.listWidget.count()):
                  item = self.listWidget.item(i)
                  widget = self.listWidget.itemWidget(item)
                  if widget:
-                    # Получаем текст из первого элемента layout (название приложения)
+                    # Get text from first element of layout
                      label = widget.layout().itemAt(0).widget()
                      if isinstance(label, QLabel) and label.text() == self.lastEntry:
                          found_item = item
@@ -193,7 +188,6 @@ class TimerApp(QDialog):
                  # Force visual selection highlight
                  self.listWidget.setCurrentItem(found_item)
                  self.listWidget.setFocus()
-
 
     def loadSettings(self):
         if os.path.exists("settings.json"):
@@ -216,32 +210,32 @@ class TimerApp(QDialog):
         self.timeLabels.clear()
         items = [app for app in sorted(self.entries, key=lambda k: self.entries[k], reverse=True)]
         for app in items:
-            item = QListWidgetItem()  # Создаем пустой элемент списка
+            item = QListWidgetItem()  # empty element of the list
 
-            widget = QWidget()  # Создаем контейнер для строки
-            layout = QHBoxLayout()  # Создаем горизонтальный layout
+            widget = QWidget()  # container for a string
+            layout = QHBoxLayout()  # create horizontal layout
             
-            # Создаем QLabel для названия игры
+            # create QLabel for entry name
             entryLabel = QLabel(app)
             entryLabel.setStyleSheet("font-size: 14px; font-weight: bold;")
             
-            # Создаем QLabel для времени
+            # create QLabel for time
             timeLabel = QLabel(self.format_time(self.entries[app]))
             timeLabel.setStyleSheet("min-width: 100px; text-align: right;")
             timeLabel.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             
-            # Добавляем виджеты в layout
+            # add widgets to layout
             layout.addWidget(entryLabel)
             layout.addWidget(timeLabel)
-            layout.setContentsMargins(5, 0, 5, 0)  # Устанавливаем отступы
+            layout.setContentsMargins(5, 0, 5, 0)  # margins
             
-            # Устанавливаем layout в контейнер
+            # layout into container
             widget.setLayout(layout)
             
-            # Настройка элемента списка
+            # adjust element of the list
             item.setSizeHint(widget.sizeHint())
             
-            # Добавляем элементы в список и словарь
+            # add elements
             self.listWidget.addItem(item)
             self.listWidget.setItemWidget(item, widget)
             self.timeLabels[app] = timeLabel
@@ -276,21 +270,21 @@ class TimerApp(QDialog):
             else:
                 self.entries[app_name] = 0
                 
-                # Создаем новый элемент списка
+                # create new element of the list
                 item = QListWidgetItem()
                 widget = QWidget()
                 layout = QHBoxLayout()
                 
-                # Создаем QLabel для названия игры
+                # create QLabel for entry name
                 app_label = QLabel(app_name)
                 app_label.setStyleSheet("font-size: 14px; font-weight: bold;")
                 
-                # Создаем QLabel для времени
+                # create QLabel for time
                 time_label = QLabel("0:00:00")
                 time_label.setStyleSheet("min-width: 100px; text-align: right;")
                 time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 
-                # Собираем layout
+                # layout
                 layout.addWidget(app_label)
                 layout.addWidget(time_label)
                 layout.setContentsMargins(5, 0, 5, 0)
@@ -298,7 +292,7 @@ class TimerApp(QDialog):
                 
                 item.setSizeHint(widget.sizeHint())
                 
-                # Добавляем элементы
+                # add elements
                 self.listWidget.addItem(item)
                 self.listWidget.setItemWidget(item, widget)
                 self.timeLabels[app_name] = time_label
@@ -318,7 +312,7 @@ class TimerApp(QDialog):
             )
             if confirm == QMessageBox.Yes:
                 if self.currentEntry == self.lastEntry:
-                    self.lastEntry = None  # Установить в None, если удаляемая игра была последней
+                    self.lastEntry = None  # set None, if deleted entry was the last
                 self.entries.pop(self.currentEntry, None)  # remove entry from list
                 self.sessionTimes.pop(self.currentEntry, None)  # remove time of this entry
                 self.populateListWidget()
@@ -352,18 +346,16 @@ class TimerApp(QDialog):
                     self.setRange(-9999.0, 9999.0)
                     self.setDecimals(2)
                     self.setSingleStep(0.1)
-                    # Убираем стрелочки вверх/вниз, если хотите только ввод с клавиатуры (опционально)
+                    # remove arrows (optional)
                     # self.setButtonSymbols(QDoubleSpinBox.NoButtons) 
 
                 def keyPressEvent(self, event):
-                    # Заменяем точку на запятую для совместимости с русской локалью
+                    # swap . to ,
                     if event.key() == Qt.Key_Period:
                         event = QKeyEvent(event.type(), Qt.Key_Comma, event.modifiers(), ",")
                     super().keyPressEvent(event)
 
                 def textFromValue(self, value):
-                    # Если значение 0 и мы еще не вводили данные, возвращаем пустую строку
-                    # Но это сложно отследить без флага. Проще очистить текст через QTimer после show.
                     return super().textFromValue(value)
 
             dialog = QDialog(self)
@@ -386,21 +378,19 @@ class TimerApp(QDialog):
             
             dialog.setLayout(layout)
             
-            # Хак: Делаем поле визуально пустым сразу после показа окна
-            # Используем singleShot(0), чтобы код выполнился после того, как виджет отрисует начальное значение
+            # hack: make empty field after popup
+            # use singleShot(0), for update dialogue window
             QTimer.singleShot(0, lambda: spin_box.lineEdit().setText(""))
             
-            # Также очищаем выделение, чтобы курсор стоял в начале
+            # and empty selection to stand cursor at left position
             QTimer.singleShot(0, lambda: spin_box.lineEdit().deselect())
 
             if dialog.exec_() == QDialog.Accepted:
                 text = spin_box.lineEdit().text()
                 
-                # Если пользователь ничего не ввел, считаем как 0
                 if not text.strip():
                     val = 0.0
                 else:
-                    # Преобразуем вручную, чтобы быть уверенными в формате (запятая/точка)
                     clean_text = text.replace(',', '.')
                     try:
                         val = float(clean_text)
